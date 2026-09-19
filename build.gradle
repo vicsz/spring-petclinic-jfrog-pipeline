@@ -20,8 +20,27 @@ java {
   }
 }
 
+def jfrogUrl = System.getenv('JFROG_GRADLE_REPOSITORY_URL')
+def jfrogUsername = System.getenv('JFROG_USERNAME')
+def jfrogToken = System.getenv('JFROG_IDENTITY_TOKEN')
+
 repositories {
-  mavenCentral()
+  if (jfrogUrl) {
+    if (!jfrogUsername || !jfrogToken) {
+      throw new GradleException('JFROG_USERNAME and JFROG_IDENTITY_TOKEN are required when JFROG_GRADLE_REPOSITORY_URL is set')
+    }
+    maven {
+      name = 'jfrog'
+      url = uri(jfrogUrl)
+      credentials {
+        username = jfrogUsername
+        password = jfrogToken
+      }
+    }
+  }
+  else {
+    mavenCentral()
+  }
 }
 
 ext.checkstyleVersion = "12.3.1"

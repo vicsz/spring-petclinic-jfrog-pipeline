@@ -4,6 +4,7 @@ pipeline {
     environment {
         IMAGE_NAME = 'spring-petclinic:jenkins'
         CONTAINER_NAME = 'spring-petclinic-jenkins-smoke'
+        JFROG_GRADLE_REPOSITORY_URL = 'https://trialbf1216.jfrog.io/artifactory/gradle-virtual'
     }
 
     stages {
@@ -15,7 +16,10 @@ pipeline {
 
         stage('Build and test') {
             steps {
-                sh './gradlew --no-daemon test bootJar'
+                withCredentials([usernamePassword(credentialsId: 'jfrog-cloud-gradle',
+                    usernameVariable: 'JFROG_USERNAME', passwordVariable: 'JFROG_IDENTITY_TOKEN')]) {
+                    sh './gradlew --no-daemon --refresh-dependencies test bootJar'
+                }
             }
         }
 
