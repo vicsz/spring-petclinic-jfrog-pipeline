@@ -20,29 +20,6 @@ java {
   }
 }
 
-def jfrogUrl = System.getenv('JFROG_GRADLE_REPOSITORY_URL')
-def jfrogUsername = System.getenv('JFROG_USERNAME')
-def jfrogToken = System.getenv('JFROG_IDENTITY_TOKEN')
-
-repositories {
-  if (jfrogUrl) {
-    if (!jfrogUsername || !jfrogToken) {
-      throw new GradleException('JFROG_USERNAME and JFROG_IDENTITY_TOKEN are required when JFROG_GRADLE_REPOSITORY_URL is set')
-    }
-    maven {
-      name = 'jfrog'
-      url = uri(jfrogUrl)
-      credentials {
-        username = jfrogUsername
-        password = jfrogToken
-      }
-    }
-  }
-  else {
-    mavenCentral()
-  }
-}
-
 ext.checkstyleVersion = "12.3.1"
 ext.springJavaformatCheckstyleVersion = "0.0.47"
 ext.webjarsLocatorLiteVersion = "1.1.3"
@@ -79,6 +56,10 @@ dependencies {
 
 tasks.named('test') {
   useJUnitPlatform()
+}
+
+tasks.named('bootJar') {
+  archiveFileName = 'petclinic.jar'
 }
 
 tasks.named("cyclonedxDirectBom").configure {

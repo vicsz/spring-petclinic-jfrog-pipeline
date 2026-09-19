@@ -29,11 +29,14 @@ artifact Jenkins tested.
 
 - `Jenkinsfile` — checkout, authenticated Gradle build, test reporting, image
   packaging, and smoke test.
-- `Dockerfile` — minimal runtime-only Java 17 image.
+- `Dockerfile` — minimal runtime-only Java 17 image pinned by digest.
 - `.dockerignore` — allows only the Dockerfile and built JAR into the build
   context.
 - `build.gradle` and `settings.gradle` — JFrog-backed dependency and plugin
-  resolution when the JFrog variables are supplied.
+  resolution when the JFrog variables are supplied, with project-level
+  repositories blocked.
+- `gradle/verification-metadata.xml` — checked-in SHA-256 values for resolved
+  plugins and dependencies.
 
 ## Jenkins setup
 
@@ -61,7 +64,9 @@ with:
 
 The pipeline publishes JUnit results, uses build-specific image/container
 names, limits job concurrency and runtime, and prints container logs when the
-smoke test fails.
+smoke test fails. Successful builds archive the tested `petclinic.jar`, a
+loadable Docker image archive, and its SHA-256 checksum. Jenkins keeps ten
+build records and the artifacts from the latest three builds.
 
 ## Build and run locally
 
@@ -83,11 +88,29 @@ docker run --rm --name spring-petclinic --publish 8080:8080 spring-petclinic:loc
 Open <http://localhost:8080/>. The credentials are needed only for Gradle; they
 are not passed to Docker or stored in the image.
 
+## Jenkins artifacts
+
+Successful builds provide the tested JAR, a Docker image archive, and its
+SHA-256 checksum. After downloading the archived files from Jenkins:
+
+```bash
+sha256sum --check spring-petclinic-image.tar.sha256
+docker load --input spring-petclinic-image.tar
+docker run --rm --publish 8080:8080 spring-petclinic:verified
+```
+
+On macOS, use `shasum -a 256 spring-petclinic-image.tar` and compare it with
+the archived checksum.
+
 ## Dependency provenance
 
 The verified security boundary is that the Gradle client talks to JFrog rather
 than contacting Maven Central directly. JFrog may then serve its cache or proxy
 an approved upstream repository, which is the intended behavior.
+
+Gradle also verifies resolved artifacts against the committed checksum
+baseline, and the wrapper verifies the Gradle distribution checksum before
+using it.
 
 To verify the path independently, use an empty Gradle cache and dependency
 refresh:

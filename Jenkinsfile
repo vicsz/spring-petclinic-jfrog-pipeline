@@ -5,11 +5,12 @@ pipeline {
         skipDefaultCheckout(true)
         disableConcurrentBuilds()
         timeout(time: 20, unit: 'MINUTES')
-        buildDiscarder(logRotator(numToKeepStr: '10'))
+        buildDiscarder(logRotator(numToKeepStr: '10', artifactNumToKeepStr: '3'))
     }
 
     environment {
         IMAGE_NAME = "spring-petclinic:jenkins-${env.BUILD_NUMBER}"
+        DELIVERABLE_IMAGE_NAME = 'spring-petclinic:verified'
         CONTAINER_NAME = "spring-petclinic-jenkins-smoke-${env.BUILD_NUMBER}"
         JFROG_GRADLE_REPOSITORY_URL = 'https://trialbf1216.jfrog.io/artifactory/gradle-virtual'
     }
@@ -34,9 +35,8 @@ pipeline {
             steps {
                 sh '''
                     set -eu
-                    JAR_COUNT="$(find build/libs -maxdepth 1 -type f -name '*.jar' | wc -l | tr -d '[:space:]')"
-                    if [ "$JAR_COUNT" -ne 1 ]; then
-                        echo "Expected exactly one runnable JAR in build/libs, found $JAR_COUNT" >&2
+                    if [ ! -f build/libs/petclinic.jar ]; then
+                        echo 'Expected build/libs/petclinic.jar from the Gradle build' >&2
                         exit 1
                     fi
                     docker build --tag "$IMAGE_NAME" .
@@ -71,12 +71,31 @@ pipeline {
                 '''
             }
         }
+
+        stage('Package deliverables') {
+            steps {
+                sh '''
+                    set -eu
+                    mkdir -p build/deliverables
+                    docker tag "$IMAGE_NAME" "$DELIVERABLE_IMAGE_NAME"
+                    docker save --output build/deliverables/spring-petclinic-image.tar "$DELIVERABLE_IMAGE_NAME"
+                    (
+                        cd build/deliverables
+                        sha256sum spring-petclinic-image.tar > spring-petclinic-image.tar.sha256
+                    )
+                '''
+                archiveArtifacts artifacts: 'build/libs/petclinic.jar,build/deliverables/*', fingerprint: true
+            }
+        }
     }
 
     post {
         always {
             junit allowEmptyResults: true, testResults: 'build/test-results/test/*.xml'
-            sh 'docker rm --force "$CONTAINER_NAME" >/dev/null 2>&1 || true'
+            sh '''
+                docker rm --force "$CONTAINER_NAME" >/dev/null 2>&1 || true
+                docker image rm "$DELIVERABLE_IMAGE_NAME" "$IMAGE_NAME" >/dev/null 2>&1 || true
+            '''
         }
     }
 }
