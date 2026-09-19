@@ -106,6 +106,10 @@ direct requests to `repo.maven.apache.org`. `--refresh-dependencies` is kept as
 a provenance test rather than imposed on every Jenkins build, so normal CI can
 reuse JFrog and Gradle caches.
 
+On commit `084fc61`, the same check ran in the Java 17 Jenkins container with a
+fresh Gradle cache: it completed successfully in 1m 53s, recorded 927 JFrog
+virtual-repository requests, and recorded no direct Maven Central requests.
+
 ## Runnable image deliverable
 
 After the local commands above, run the image with:
