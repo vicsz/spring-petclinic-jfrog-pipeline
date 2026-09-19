@@ -22,11 +22,11 @@ pipeline {
             }
         }
 
-        stage('Build and test') {
+        stage('Verify and build') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'jfrog-cloud-gradle',
                     usernameVariable: 'JFROG_USERNAME', passwordVariable: 'JFROG_IDENTITY_TOKEN')]) {
-                    sh './gradlew clean test bootJar'
+                    sh './gradlew clean build'
                 }
             }
         }
@@ -92,6 +92,7 @@ pipeline {
     post {
         always {
             junit allowEmptyResults: true, testResults: 'build/test-results/test/*.xml'
+            archiveArtifacts artifacts: 'build/reports/**', allowEmptyArchive: true
             sh '''
                 docker rm --force "$CONTAINER_NAME" >/dev/null 2>&1 || true
                 docker image rm "$DELIVERABLE_IMAGE_NAME" "$IMAGE_NAME" >/dev/null 2>&1 || true

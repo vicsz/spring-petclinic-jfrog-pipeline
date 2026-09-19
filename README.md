@@ -59,14 +59,16 @@ Jenkins injects the username and token only while Gradle is running. It builds
 with:
 
 ```bash
-./gradlew clean test bootJar
+./gradlew clean build
 ```
 
-The pipeline publishes JUnit results, uses build-specific image/container
-names, limits job concurrency and runtime, and prints container logs when the
-smoke test fails. Successful builds archive the tested `petclinic.jar`, a
-loadable Docker image archive, and its SHA-256 checksum. Jenkins keeps ten
-build records and the artifacts from the latest three builds.
+The Gradle `build` lifecycle runs tests, formatting validation, Checkstyle, and
+the NoHTTP policy before Jenkins packages the JAR. The pipeline publishes JUnit
+results and validation reports, uses build-specific image/container names,
+limits job concurrency and runtime, and prints container logs when the smoke
+test fails. Successful builds archive the tested `petclinic.jar`, a loadable
+Docker image archive, and its SHA-256 checksum. Jenkins keeps ten build records
+and the artifacts from the latest three builds.
 
 ## Build and run locally
 
@@ -80,7 +82,7 @@ export JFROG_GRADLE_REPOSITORY_URL='https://trialbf1216.jfrog.io/artifactory/gra
 export JFROG_USERNAME='your-jfrog-username'
 export JFROG_IDENTITY_TOKEN='your-jfrog-identity-token'
 
-./gradlew clean test bootJar
+./gradlew clean build
 docker build --tag spring-petclinic:local .
 docker run --rm --name spring-petclinic --publish 8080:8080 spring-petclinic:local
 ```
