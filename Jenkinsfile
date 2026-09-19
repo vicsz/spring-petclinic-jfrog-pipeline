@@ -33,7 +33,7 @@ pipeline {
                     docker run --detach --name "$CONTAINER_NAME" --publish 18080:8080 "$IMAGE_NAME"
                     trap 'docker rm --force "$CONTAINER_NAME" >/dev/null 2>&1 || true' EXIT
                     for attempt in $(seq 1 30); do
-                        if curl --fail --silent http://127.0.0.1:18080/ >/dev/null; then
+                        if curl --fail --silent http://host.docker.internal:18080/ >/dev/null; then
                             exit 0
                         fi
                         sleep 2
