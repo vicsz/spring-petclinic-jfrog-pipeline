@@ -1,0 +1,10 @@
+# The Dockerfile packages the JAR already built and tested by Jenkins. Keep the
+# build context intentionally small so source, Git metadata, and local secrets
+# can never be copied into the image or a Docker build layer.
+**
+!Dockerfile
+!build
+build/**
+!build/libs
+build/libs/**
+!build/libs/*.jar

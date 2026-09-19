@@ -1,17 +1,12 @@
-# Build the application with the project's pinned Gradle wrapper.
-FROM eclipse-temurin:17-jdk AS build
-
-WORKDIR /workspace
-COPY . .
-
-RUN chmod +x ./gradlew \
-    && ./gradlew --no-daemon test bootJar
-
-# Keep the runtime image smaller than the build image.
 FROM eclipse-temurin:17-jre
 
 WORKDIR /app
-COPY --from=build /workspace/build/libs/*.jar /app/petclinic.jar
+
+# Jenkins builds and tests this executable JAR through the authenticated JFrog
+# repository before Docker packages it. The .dockerignore file exposes only
+# this artifact to the Docker build context.
+COPY --chown=10001:10001 build/libs/*.jar /app/petclinic.jar
 
 EXPOSE 8080
+USER 10001:10001
 ENTRYPOINT ["java", "-jar", "/app/petclinic.jar"]

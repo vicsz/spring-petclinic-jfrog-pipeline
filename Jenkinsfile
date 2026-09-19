@@ -1,9 +1,16 @@
 pipeline {
     agent any
 
+    options {
+        skipDefaultCheckout(true)
+        disableConcurrentBuilds()
+        timeout(time: 20, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+    }
+
     environment {
-        IMAGE_NAME = 'spring-petclinic:jenkins'
-        CONTAINER_NAME = 'spring-petclinic-jenkins-smoke'
+        IMAGE_NAME = "spring-petclinic:jenkins-${env.BUILD_NUMBER}"
+        CONTAINER_NAME = "spring-petclinic-jenkins-smoke-${env.BUILD_NUMBER}"
         JFROG_GRADLE_REPOSITORY_URL = 'https://trialbf1216.jfrog.io/artifactory/gradle-virtual'
     }
 
@@ -18,14 +25,22 @@ pipeline {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'jfrog-cloud-gradle',
                     usernameVariable: 'JFROG_USERNAME', passwordVariable: 'JFROG_IDENTITY_TOKEN')]) {
-                    sh './gradlew --no-daemon --refresh-dependencies test bootJar'
+                    sh './gradlew clean test bootJar'
                 }
             }
         }
 
         stage('Build Docker image') {
             steps {
-                sh 'docker build --tag "$IMAGE_NAME" .'
+                sh '''
+                    set -eu
+                    JAR_COUNT="$(find build/libs -maxdepth 1 -type f -name '*.jar' | wc -l | tr -d '[:space:]')"
+                    if [ "$JAR_COUNT" -ne 1 ]; then
+                        echo "Expected exactly one runnable JAR in build/libs, found $JAR_COUNT" >&2
+                        exit 1
+                    fi
+                    docker build --tag "$IMAGE_NAME" .
+                '''
             }
         }
 
@@ -37,6 +52,11 @@ pipeline {
                     trap 'docker rm --force "$CONTAINER_NAME" >/dev/null 2>&1 || true' EXIT
                     docker run --detach --name "$CONTAINER_NAME" --publish 0:8080 "$IMAGE_NAME"
                     SMOKE_PORT="$(docker port "$CONTAINER_NAME" 8080/tcp | sed -n '1s/.*://p')"
+                    if [ -z "$SMOKE_PORT" ]; then
+                        echo 'Docker did not publish a smoke-test port' >&2
+                        docker logs "$CONTAINER_NAME" >&2 || true
+                        exit 1
+                    fi
                     HTTP_SCHEME='http'
                     HEALTH_URL="${HTTP_SCHEME}://host.docker.internal:${SMOKE_PORT}/"
                     for attempt in $(seq 1 30); do
@@ -46,6 +66,7 @@ pipeline {
                         sleep 2
                     done
                     echo 'Petclinic did not become ready in time' >&2
+                    docker logs "$CONTAINER_NAME" >&2 || true
                     exit 1
                 '''
             }
@@ -54,6 +75,7 @@ pipeline {
 
     post {
         always {
+            junit allowEmptyResults: true, testResults: 'build/test-results/test/*.xml'
             sh 'docker rm --force "$CONTAINER_NAME" >/dev/null 2>&1 || true'
         }
     }
