@@ -1,9 +1,8 @@
 # Spring Petclinic: Jenkins + JFrog Cloud
 
-This repository implements the required JFrog Professional Services Engineer
-assignment: Jenkins compiles and tests Spring Petclinic, Gradle resolves its
-plugins and dependencies through JFrog Cloud, Docker packages the verified JAR,
-and Jenkins smoke-tests the resulting image.
+This repository demonstrates a Jenkins pipeline for Spring Petclinic. Jenkins
+uses Gradle to resolve plugins and dependencies through JFrog Cloud, Docker
+packages the verified JAR, and Jenkins smoke-tests the resulting image.
 
 ![Jenkins and JFrog dependency flow](assets/jfrog-pipeline-flow.png)
 
@@ -26,7 +25,7 @@ There is no second Gradle build inside Docker. This keeps dependency resolution
 on the authenticated JFrog path and ensures that the image contains the same
 artifact Jenkins tested.
 
-## Assignment files
+## Pipeline files
 
 - `Jenkinsfile` — checkout, authenticated Gradle build, test reporting, image
   packaging, and smoke test.
@@ -84,52 +83,21 @@ docker run --rm --name spring-petclinic --publish 8080:8080 spring-petclinic:loc
 Open <http://localhost:8080/>. The credentials are needed only for Gradle; they
 are not passed to Docker or stored in the image.
 
-For reviewers without JFrog credentials, leaving the three JFrog variables
-unset activates the project's public-repository fallback. The Jenkins pipeline
-always sets the JFrog URL and binds the private credential.
-
 ## Dependency provenance
 
 The verified security boundary is that the Gradle client talks to JFrog rather
 than contacting Maven Central directly. JFrog may then serve its cache or proxy
 an approved upstream repository, which is the intended behavior.
 
-The path was verified with an empty Gradle cache and dependency refresh:
+To verify the path independently, use an empty Gradle cache and dependency
+refresh:
 
 ```bash
 GRADLE_USER_HOME="$(mktemp -d)" \
   ./gradlew --no-daemon --refresh-dependencies test bootJar --info
 ```
 
-The resulting log contained requests to the JFrog virtual repository and no
-direct requests to `repo.maven.apache.org`. `--refresh-dependencies` is kept as
-a provenance test rather than imposed on every Jenkins build, so normal CI can
-reuse JFrog and Gradle caches.
-
-On commit `084fc61`, the same check ran in the Java 17 Jenkins container with a
-fresh Gradle cache: it completed successfully in 1m 53s, recorded 927 JFrog
-virtual-repository requests, and recorded no direct Maven Central requests.
-
-## Runnable image deliverable
-
-After the local commands above, run the image with:
-
-```bash
-docker run --rm --publish 8080:8080 spring-petclinic:local
-```
-
-To attach it as a file to the submission:
-
-```bash
-docker save --output spring-petclinic.tar spring-petclinic:local
-shasum -a 256 spring-petclinic.tar
-```
-
-The image archive is a submission artifact and should not be committed to Git.
-
-## Optional self-hosted bonus
-
-The required JFrog Cloud implementation is complete. The optional self-hosted
-Artifactory deployment is intentionally not included; the same configurable
-Gradle repository URL can point the pipeline at a self-hosted virtual
-repository if the bonus is added later.
+The log should contain requests to the JFrog virtual repository and no direct
+requests to `repo.maven.apache.org`. `--refresh-dependencies` is a provenance
+check rather than a normal Jenkins option, so regular CI can reuse JFrog and
+Gradle caches.
