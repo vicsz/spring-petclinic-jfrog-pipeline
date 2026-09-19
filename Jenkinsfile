@@ -30,10 +30,13 @@ pipeline {
                 sh '''
                     set -eu
                     docker rm --force "$CONTAINER_NAME" >/dev/null 2>&1 || true
-                    docker run --detach --name "$CONTAINER_NAME" --publish 18080:8080 "$IMAGE_NAME"
                     trap 'docker rm --force "$CONTAINER_NAME" >/dev/null 2>&1 || true' EXIT
+                    docker run --detach --name "$CONTAINER_NAME" --publish 0:8080 "$IMAGE_NAME"
+                    SMOKE_PORT="$(docker port "$CONTAINER_NAME" 8080/tcp | sed -n '1s/.*://p')"
+                    HTTP_SCHEME='http'
+                    HEALTH_URL="${HTTP_SCHEME}://host.docker.internal:${SMOKE_PORT}/"
                     for attempt in $(seq 1 30); do
-                        if curl --fail --silent http://host.docker.internal:18080/ >/dev/null; then
+                        if curl --fail --silent --show-error "$HEALTH_URL" >/dev/null; then
                             exit 0
                         fi
                         sleep 2
