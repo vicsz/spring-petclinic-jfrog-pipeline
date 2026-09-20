@@ -144,7 +144,8 @@ improvements for a larger or longer-lived delivery platform.
 | 7 | Avoid unnecessary builds | Skip application builds for documentation-only changes. | Saves CI capacity. |
 | 8 | JFrog governance | Publish Build Info, add Xray gates, and promote immutable builds. | Improves traceability and release control. |
 | 9 | Image supply chain | Publish immutable tags and digests; associate the SBOM and provenance. | Strengthens traceability and security. |
-| 10 | CI operations | Add metrics, report links, portable smoke tests, and failure alerts. | Improves operation and recovery. |
+| 10 | Artifact versioning | Keep the source version stable; add the Jenkins build number and Git SHA to archived JAR and image identities. | Makes every deliverable traceable. |
+| 11 | CI operations | Add metrics, report links, portable smoke tests, and failure alerts. | Improves operation and recovery. |
 
 ### Why Gradle and the wrapper
 
