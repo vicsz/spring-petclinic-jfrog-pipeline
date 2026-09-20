@@ -126,3 +126,29 @@ The log should contain requests to the JFrog virtual repository and no direct
 requests to `repo.maven.apache.org`. `--refresh-dependencies` is a provenance
 check rather than a normal Jenkins option, so regular CI can reuse JFrog and
 Gradle caches.
+
+## Potential future improvements
+
+The current pipeline is intentionally focused on the required build, test,
+container, and JFrog Cloud flow. The following are measured follow-on
+improvements for a larger or longer-lived delivery platform.
+
+| # | Area | Potential improvement | Expected benefit |
+| ---: | --- | --- | --- |
+| 1 | Warning hygiene | Fix actionable warnings; track unavoidable tool noise. | Keeps regressions visible. |
+| 2 | Incremental builds | Use `./gradlew build` routinely; reserve `clean build` for release checks. | Avoids repeated work. |
+| 3 | Gradle caching | Persist a controlled cache; evaluate build and configuration cache. | Reuses dependencies and task outputs. |
+| 4 | Build dependency graph | Favor Gradle's dependency graph over sequential scripts; enable measured `--parallel` work. | Shortens the critical path. |
+| 5 | Test execution | Split suites; parallelize only isolated tests. | Speeds tests without flakiness. |
+| 6 | Test cadence | Run fast tests per change; run long environment tests on scheduled and release paths. | Balances speed and coverage. |
+| 7 | Avoid unnecessary builds | Skip application builds for documentation-only changes. | Saves CI capacity. |
+| 8 | JFrog governance | Publish Build Info, add Xray gates, and promote immutable builds. | Improves traceability and release control. |
+| 9 | Image supply chain | Publish immutable tags and digests; associate the SBOM and provenance. | Strengthens traceability and security. |
+| 10 | CI operations | Add metrics, report links, portable smoke tests, and failure alerts. | Improves operation and recovery. |
+
+### Why Gradle and the wrapper
+
+Maven stubbornly persists, but Gradle is simply nicer to evolve. Its readable
+build logic, dependency-aware execution, and caching model suit a CI pipeline
+that will grow over time. With `./gradlew`, the repository brings its own build
+tool; agents need only Java, plus Docker for image work.
